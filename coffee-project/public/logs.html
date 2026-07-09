@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coffee Service Logs</title>
+    <style>
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        margin: 0;
+        background: #111;
+        color: #f1f1f1;
+      }
+      header {
+        padding: 1rem;
+        background: #222;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      button {
+        background: #0d6efd;
+        border: none;
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      #logContainer {
+        padding: 1rem;
+        white-space: pre-wrap;
+        max-height: calc(100vh - 64px);
+        overflow-y: auto;
+      }
+      .entry {
+        padding: 0.35rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .timestamp {
+        color: #0d6efd;
+        margin-right: 0.5rem;
+      }
+      .event {
+        color: #ffd166;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 style="margin: 0; font-size: 1.1rem">Live Coffee Service Logs</h1>
+      <button id="refreshBtn">Refresh now</button>
+      <span id="status"></span>
+    </header>
+    <section id="logContainer"></section>
+    <script>
+      const container = document.getElementById('logContainer');
+      const refreshBtn = document.getElementById('refreshBtn');
+      const statusEl = document.getElementById('status');
+
+      async function fetchLogs(manual = false) {
+        try {
+          if (manual) {
+            refreshBtn.disabled = true;
+          }
+          statusEl.textContent = 'Loading…';
+          const response = await fetch('/logs/data');
+          if (!response.ok) {
+            throw new Error('Failed to fetch logs');
+          }
+          const payload = await response.json();
+          renderLogs(payload.logs || []);
+          statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        } catch (error) {
+          statusEl.textContent = error.message;
+        } finally {
+          refreshBtn.disabled = false;
+        }
+      }
+
+      function renderLogs(logs) {
+        if (!logs.length) {
+          container.innerHTML = '<p>No logs yet. Interact with the API to generate activity.</p>';
+          return;
+        }
+
+        container.innerHTML = logs
+          .map((log) => {
+            const { timestamp, event, ...rest } = log;
+            return `
+              <div class="entry">
+                <span class="timestamp">${timestamp}</span>
+                <span class="event">${event}</span>
+                <code>${JSON.stringify(rest)}</code>
+              </div>
+            `;
+          })
+          .join('');
+        container.scrollTop = container.scrollHeight;
+      }
+
+      refreshBtn.addEventListener('click', () => fetchLogs(true));
+      fetchLogs();
+      setInterval(fetchLogs, 4000);
+    </script>
+  </body>
+</html>
